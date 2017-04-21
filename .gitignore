@@ -1,0 +1,11 @@
+/UI
+Debug
+Release
+.DS_Store
+*.user
+*.suo
+*.ncb
+
+*.swp
+*~
+*.gch
