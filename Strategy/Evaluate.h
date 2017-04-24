@@ -11,8 +11,12 @@ class Evaluate
 private:
     static const int WALK[4][2];
 
+    static int lineValue(int x, int y, int dx, int dy, int color, const Board &board);
+
+    static int pointValue(int x, int y, const Board &board);
+
 public:
-    static bool won(int M, int N, int lastX, int lastY, int lastColor, const Board &board);
+    static bool won(int lastX, int lastY, int lastColor, const Board &board);
 
     static int evaluate(int M, int N, int lastX, int lastY, int lastColor, const Board &board);
 };

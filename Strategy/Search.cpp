@@ -1,17 +1,9 @@
 #include <cassert>
+#include <cstdlib>
 #include <algorithm>
 #include "Board.h"
 #include "Search.h"
 #include "Evaluate.h"
-
-static int myRand()
-{
-    static int x = 0;
-    x = x * 1103515245 + 3611553;
-    x &= 0x7fffffff;
-    assert(x >= 0);
-    return x;
-}
 
 void Search::addChildren(Node *node, int depth, int color, int alpha, int beta)
 {
@@ -24,7 +16,7 @@ void Search::addChildren(Node *node, int depth, int color, int alpha, int beta)
             board.set(i, color);
             if (!depth || drop)
                 node->children[i] = new Node(Evaluate::evaluate(M, N, x, i, color, board));
-            else if (Evaluate::won(M, N, x, i, color, board))
+            else if (Evaluate::won(x, i, color, board))
                 node->children[i] = new Node(color == WE ? MAX_VALUE : MIN_VALUE);
             else {
                 node->children[i] = new Node(0); // Value doesn't matter
@@ -52,26 +44,31 @@ void Search::extendImpl(Node *node, int color)
         return;
     if (node->valFrom == -1)
     {
-        addChildren(node, 2, color);
+        addChildren(node, 1, color);
         return;
     }
 
-    int* prob = new int[N]; // Probability of changing node->value
-    memset(prob, 0, N * sizeof(int));
+    double* prob = new double[N]; // Probability of changing node->value
+    memset(prob, 0, N * sizeof(double));
     for (int i = 0; i < N; i++)
         if (node->children[i])
+        {
+            int len = node->children[i]->maxConf - node->children[i]->minConf;
+            if (!len) continue;
             if (i == node->valFrom)
-                prob[i] = node->children[i]->maxConf - node->children[i]->minConf;
+                prob[i] = 1;
             else if (color == WE)
-                prob[i] = std::max(0, node->children[i]->maxConf - node->value);
+                prob[i] = double(std::max(0, node->children[i]->maxConf - node->value)) / len;
             else
-                prob[i] = std::max(0, node->value - node->children[i]->minConf);
+                prob[i] = double(std::max(0, node->value - node->children[i]->minConf)) / len;
+        }
     for (int i = 1; i < N; i++)
         prob[i] += prob[i - 1];
-    assert(prob[N - 1] > 0);
-    int pos(myRand() % prob[N - 1]);
+    assert(prob[N - 1] >= 0);
+    if (!prob[N - 1]) return;
+    double pos(double(rand()) / RAND_MAX * prob[N - 1]);
     int toGo(0);
-    while (prob[toGo] <= pos) toGo++;
+    while (prob[toGo] <= pos && toGo < N - 1) toGo++;
     delete[] prob;
     board.set(toGo, color);
     extendImpl(node->children[toGo], 3 - color);
@@ -97,9 +94,21 @@ void Search::backtrack(Search::Node *node, int color)
                 node->value = ch->value, node->valFrom = i;
                 node->timeToDie = !~ch->timeToDie ? -1 : ch->timeToDie + 1;
             }
-            if (node->value == ch->value && ch->timeToDie >= 0 && ch->timeToDie + 1 > node->timeToDie)
-                node->timeToDie = ch->timeToDie + 1, node->valFrom = i;
-            // If ch->value tend to win, there is usually only 1 choice
+            if (node->value == ch->value)
+            {
+                if (color == WE && node->value == MIN_VALUE || color == THEY && node->value == MAX_VALUE)
+                {
+                    assert(ch->timeToDie >= 0);
+                    if (ch->timeToDie + 1 > node->timeToDie)
+                        node->timeToDie = ch->timeToDie + 1, node->valFrom = i;
+                }
+                if (color == WE && node->value == MAX_VALUE || color == THEY && node->value == MIN_VALUE)
+                {
+                    assert(ch->timeToDie >= 0);
+                    if (ch->timeToDie + 1 < node->timeToDie)
+                        node->timeToDie = ch->timeToDie + 1, node->valFrom = i;
+                }
+            }
             maxMax = std::max(maxMax, ch->maxConf);
             minMax = std::min(minMax, ch->maxConf);
             maxMin = std::max(maxMin, ch->minConf);
@@ -138,10 +147,11 @@ void Search::moveRoot(int action, int color)
     if (!root->children[action])
     {
         assert(color == THEY);
-        addChildren(root, 0, color);
+        addChildren(root, 1, color);
     }
     Node *old = root;
     root = old->children[action];
     old->children[action] = 0;
     delete old;
+    board.set(action, color); // Should be after addChildren
 }

@@ -1,4 +1,5 @@
 #include <ctime>
+#include <cstdlib>
 #include "Const.h"
 #include "Board.h"
 #include "Search.h"
@@ -6,7 +7,6 @@
 #ifndef NDEBUG
     #include <conio.h>
     #include <atlstr.h>
-    #include <crtdbg.h>
 #endif
 
 /**
@@ -33,12 +33,12 @@ output:
 extern "C" __declspec(dllexport) Point* getPoint(
     const int M, const int N, const int* top, const int* _board, const int lastX, const int lastY, const int noX, const int noY)
 {
+    clock_t stClock = clock();
+
 #ifndef NDEBUG
     static bool window = false;
     if (!window)
         window = true, AllocConsole();
-    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-    _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_DEBUG);
 #endif
     assert(N <= MAX_N);
     static Board *board = 0;
@@ -57,13 +57,12 @@ extern "C" __declspec(dllexport) Point* getPoint(
         assert(!search);
         board = new Board(M, N, noX, noY, _board, top);
         search = new Search(M, N, *board);
+        srand(0);
     } else {
         assert(board->getTop(lastY) == lastX + 1);
-        board->set(lastY, THEY);
         search->moveRoot(lastY, THEY);
     }
 
-    clock_t stClock = clock();
     int cnt = 0;
     while (clock() - stClock < 0.5 * CLOCKS_PER_SEC)
         search->extend(), cnt++;
@@ -73,7 +72,6 @@ extern "C" __declspec(dllexport) Point* getPoint(
 
     int y(search->best()), x(board->getTop(y) - 1);
     search->moveRoot(y, WE);
-    board->set(y, WE);
 	return new Point(x, y);
 }
 
