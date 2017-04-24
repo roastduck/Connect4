@@ -28,8 +28,8 @@ void Search::extendImpl(Node *node, int color)
                 board.reset(i);
             }
     } else {
-        int prob[MAX_N]; // Probability of changing node->value
-        memset(prob, 0, sizeof prob);
+        int* prob = new int[N]; // Probability of changing node->value
+        memset(prob, 0, N * sizeof(int));
         for (int i = 0; i < N; i++)
             if (node->children[i])
                 if (i == node->valFrom)
@@ -43,6 +43,7 @@ void Search::extendImpl(Node *node, int color)
         int pos(myRand() % prob[N - 1]);
         int toGo(0);
         while (prob[toGo] <= pos) toGo++;
+        delete[] prob;
         board.set(toGo, color);
         extendImpl(node->children[toGo], 3 - color);
         board.reset(toGo);
@@ -66,6 +67,10 @@ void Search::extendImpl(Node *node, int color)
         }
     if (tie)
         node->value = node->maxConf = node->minConf = 0;
+    if (color == WE)
+        node->maxConf -= (node->maxConf - node->value) / 4;
+    else
+        node->minConf += (node->value - node->minConf) / 4;
 }
 
 void Search::extend()

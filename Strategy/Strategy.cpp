@@ -1,3 +1,4 @@
+#include <ctime>
 #include "Const.h"
 #include "Board.h"
 #include "Search.h"
@@ -30,6 +31,15 @@ extern "C" __declspec(dllexport) Point* getPoint(
     assert(N <= MAX_N);
     static Board *board = 0;
     static Search *search = 0;
+    if (board)
+        for (int i = 0; i < N; i++)
+            if (top[i] > board->getTop(i)) // Game restarted
+            {
+                delete board;
+                delete search;
+                board = 0, search = 0;
+                break;
+            }
     if (!board)
     {
         assert(!search);
@@ -41,7 +51,8 @@ extern "C" __declspec(dllexport) Point* getPoint(
         search->moveRoot(lastY);
     }
 
-    for (int i = 0; i < 5000; i++)
+    clock_t stClock = clock();
+    while (clock() - stClock < 0.5 * CLOCKS_PER_SEC)
         search->extend();
 
     int y(search->best()), x(board->getTop(y) - 1);

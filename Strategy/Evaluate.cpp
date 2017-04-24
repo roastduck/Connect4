@@ -23,10 +23,14 @@ int Evaluate::evaluate(int M, int N, int lastX, int lastY, int lastColor, const 
 
     int ret(0);
     for (int i = 0; i < N; i++)
-        if (board.getTop(i))
+    {
+        const int y(i);
+        for (int x = board.getTop(i) - 1, scale = 1; scale && x >= 0; x--)
+        {
+            int accu(0);
             for (int k = 0; k < 4; k++)
             {
-                const int x(board.getTop(i) - 1), y(i), dx(WALK[k][0]), dy(WALK[k][1]);
+                const int dx(WALK[k][0]), dy(WALK[k][1]);
                 int stepL(1), stepR(1), l(2), r(2), colorL(0), colorR(0);
                 if (board.inBoard(x + dx, y + dy) && board(x + dx, y + dy))
                 {
@@ -43,14 +47,18 @@ int Evaluate::evaluate(int M, int N, int lastX, int lastY, int lastColor, const 
                 if (!colorL && !colorR)
                     continue;
                 if (colorR == colorL)
-                    ret += (colorL == WE ? 1 : -1) * (stepL + stepR) * (stepL + stepR) * (stepL + stepR);
+                    accu += (colorL == WE ? 1 : -1) * (stepL + stepR) * (stepL + stepR) * (stepL + stepR);
                 else {
                     if (colorL)
-                        ret += (colorL == WE ? 1 : -1) * stepL * stepL * stepL;
+                        accu += (colorL == WE ? 1 : -1) * stepL * stepL * stepL;
                     if (colorR)
-                        ret += (colorR == WE ? 1 : -1) * stepR * stepR * stepL;
+                        accu += (colorR == WE ? 1 : -1) * stepR * stepR * stepL;
                 }
             }
+            ret += accu * scale;
+            scale *= accu / 25;
+        }
+    }
     assert(ret > MIN_VALUE && ret < MAX_VALUE);
     return ret;
 }
