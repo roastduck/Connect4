@@ -12,6 +12,8 @@ private:
     static const int WALK[4][2];
 
 public:
+    static bool won(int M, int N, int lastX, int lastY, int lastColor, const Board &board);
+
     static int evaluate(int M, int N, int lastX, int lastY, int lastColor, const Board &board);
 };
 

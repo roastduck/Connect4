@@ -3,6 +3,11 @@
 #include "Board.h"
 #include "Search.h"
 #include "Strategy.h"
+#ifndef NDEBUG
+    #include <conio.h>
+    #include <atlstr.h>
+    #include <crtdbg.h>
+#endif
 
 /**
 策略函数接口,该函数被对抗平台调用,每次传入当前状态,要求输出你的落子点,该落子点必须是一个符合游戏规则的落子点,不然对抗平台会直接认为你的程序有误
@@ -28,6 +33,13 @@ output:
 extern "C" __declspec(dllexport) Point* getPoint(
     const int M, const int N, const int* top, const int* _board, const int lastX, const int lastY, const int noX, const int noY)
 {
+#ifndef NDEBUG
+    static bool window = false;
+    if (!window)
+        window = true, AllocConsole();
+    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+    _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_DEBUG);
+#endif
     assert(N <= MAX_N);
     static Board *board = 0;
     static Search *search = 0;
@@ -48,15 +60,19 @@ extern "C" __declspec(dllexport) Point* getPoint(
     } else {
         assert(board->getTop(lastY) == lastX + 1);
         board->set(lastY, THEY);
-        search->moveRoot(lastY);
+        search->moveRoot(lastY, THEY);
     }
 
     clock_t stClock = clock();
+    int cnt = 0;
     while (clock() - stClock < 0.5 * CLOCKS_PER_SEC)
-        search->extend();
+        search->extend(), cnt++;
+#ifndef NDEBUG
+    _cprintf("Extended %d times\n", cnt);
+#endif
 
     int y(search->best()), x(board->getTop(y) - 1);
-    search->moveRoot(y);
+    search->moveRoot(y, WE);
     board->set(y, WE);
 	return new Point(x, y);
 }

@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <cassert>
 #include <cstring>
 #include "Const.h"
@@ -6,7 +7,7 @@
 
 const int Evaluate::WALK[4][2] = { { -1, 0 },{ -1, 1 },{ 0, 1 },{ 1, 1 } };
 
-int Evaluate::evaluate(int M, int N, int lastX, int lastY, int lastColor, const Board &board)
+bool Evaluate::won(int M, int N, int lastX, int lastY, int lastColor, const Board &board)
 {
     assert(board(lastX, lastY) == lastColor);
     for (int k = 0; k < 4; k++)
@@ -18,8 +19,15 @@ int Evaluate::evaluate(int M, int N, int lastX, int lastY, int lastColor, const 
         while (board.inBoard(lastX - r * dx, lastY - r * dy) && board(lastX - r * dx, lastY - r * dy) == lastColor)
             step++, r++;
         if (step >= 4)
-            return lastColor == WE ? MAX_VALUE : MIN_VALUE;
+            return true;
     }
+    return false;
+}
+
+int Evaluate::evaluate(int M, int N, int lastX, int lastY, int lastColor, const Board &board)
+{
+    if (won(M, N, lastX, lastY, lastColor, board))
+        return lastColor == WE ? MAX_VALUE : MIN_VALUE;
 
     int ret(0);
     for (int i = 0; i < N; i++)
@@ -55,8 +63,9 @@ int Evaluate::evaluate(int M, int N, int lastX, int lastY, int lastColor, const 
                         accu += (colorR == WE ? 1 : -1) * stepR * stepR * stepL;
                 }
             }
+            assert(scale > 0);
             ret += accu * scale;
-            scale *= accu / 25;
+            scale *= abs(accu) / 20;
         }
     }
     assert(ret > MIN_VALUE && ret < MAX_VALUE);

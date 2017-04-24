@@ -16,14 +16,14 @@ private:
 
     struct Node
     {
-        int value, minConf, maxConf, valFrom;
+        int value, minConf, maxConf, valFrom, timeToDie;
         Node *children[MAX_N];
 
         Node(int _value) :
-            value(_value), minConf(_value - CONF_FLOAT), maxConf(_value + CONF_FLOAT), valFrom(-1)
+            value(_value), minConf(_value - CONF_FLOAT), maxConf(_value + CONF_FLOAT), valFrom(-1), timeToDie(-1)
         {
             if (_value == MIN_VALUE || _value == MAX_VALUE)
-                minConf = maxConf = _value;
+                minConf = maxConf = _value, timeToDie = 0;
             memset(children, 0, sizeof(children));
         }
 
@@ -35,8 +35,15 @@ private:
         }
     } *root;
 
+    /// Add children to a leaf node
+    /// @param depth : Totally add `depth` levels of nodes
+    void addChildren(Node *node, int depth, int color, int alpha = MIN_VALUE, int beta = MAX_VALUE);
+
     /// Extend recursively
     void extendImpl(Node *node, int color);
+
+    /// Get update from children
+    void backtrack(Node *node, int color);
 
 public:
     Search(int _M, int _N, Board &_board) : 
@@ -56,7 +63,7 @@ public:
     int best() const;
 
     /// Move root forward and drop useless nodes
-    void moveRoot(int action);
+    void moveRoot(int action, int color);
 };
 
 #endif // SEARCH_H_
