@@ -5,35 +5,16 @@
 #include "Search.h"
 #include "Evaluate.h"
 
-void Search::addChildren(Node *node, int depth, int color, int alpha, int beta)
+void Search::addChildren(Node *node, int color)
 {
     assert(node->valFrom == -1);
-    bool drop(false);
     for (int i = 0; i < N; i++)
         if (board.getTop(i))
         {
             int x(board.getTop(i) - 1);
             board.set(i, color);
-            if (!depth || drop)
-                node->children[i] = new Node(Evaluate::evaluate(M, N, x, i, color, board));
-            else if (Evaluate::won(x, i, color, board))
-                node->children[i] = new Node(color == WE ? MAX_VALUE : MIN_VALUE);
-            else {
-                node->children[i] = new Node(0); // Value doesn't matter
-                addChildren(node->children[i], depth - 1, 3 - color, alpha, beta);
-            }
+            node->children[i] = new Node(Evaluate::evaluate(M, N, x, i, color, board));
             board.reset(i);
-            assert(node->children[i]);
-            if (color == WE)
-            {
-                if (node->children[i]->value >= beta)
-                    drop = true;
-                alpha = std::max(alpha, node->children[i]->value);
-            } else {
-                if (node->children[i]->value <= alpha)
-                    drop = true;
-                beta = std::min(beta, node->children[i]->value);
-            }
         }
     backtrack(node, color);
 }
@@ -44,7 +25,7 @@ void Search::extendImpl(Node *node, int color)
         return;
     if (node->valFrom == -1)
     {
-        addChildren(node, 1, color);
+        addChildren(node, color);
         return;
     }
 
@@ -144,14 +125,11 @@ int Search::best() const
 
 void Search::moveRoot(int action, int color)
 {
-    if (!root->children[action])
-    {
-        assert(color == THEY);
-        addChildren(root, 1, color);
-    }
     Node *old = root;
-    root = old->children[action];
-    old->children[action] = 0;
+    if (root->children[action])
+        root = old->children[action], old->children[action] = 0;
+    else
+        root = new Node(0);
     delete old;
     board.set(action, color); // Should be after addChildren
 }

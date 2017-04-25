@@ -37,7 +37,7 @@ private:
 
     /// Add children to a leaf node
     /// @param depth : Totally add `depth` levels of nodes
-    void addChildren(Node *node, int depth, int color, int alpha = MIN_VALUE, int beta = MAX_VALUE);
+    void addChildren(Node *node, int color);
 
     /// Extend recursively
     void extendImpl(Node *node, int color);
