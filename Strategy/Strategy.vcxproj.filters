@@ -21,10 +21,10 @@
     <ClCompile Include="Strategy.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Evaluate.cpp">
+    <ClCompile Include="Search.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Search.cpp">
+    <ClCompile Include="Board.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -45,9 +45,6 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Const.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="Evaluate.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

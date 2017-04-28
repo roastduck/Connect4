@@ -10,11 +10,13 @@
 class Board
 {
 private:
-    int M, N, noX, noY, *data, *top;
+    int M, N, noX, noY, *data, *top, winX, winY;
+
+    static const int WALK[4][2];
 
 public:
     Board(int _M, int _N, int _noX, int _noY, const int *_data, const int *_top)
-        : M(_M), N(_N), noX(_noX), noY(_noY), data(new int[M * N]), top(new int[N])
+        : M(_M), N(_N), noX(_noX), noY(_noY), data(new int[M * N]), top(new int[N]), winX(-1), winY(-1)
     {
         memcpy(data, _data, M * N * sizeof(int));
         memcpy(top, _top, N * sizeof(int));
@@ -31,6 +33,13 @@ public:
     int getTop(int y) const;
     void set(int y, int color);
     void reset(int y);
+
+    /// Detect vitory when `lastColor` being putting to (lastX, lastY)
+    bool winning(int lastX, int lastY, int lastColor) const;
+
+    /// Already won?
+    /// @return : winning side or 0
+    int won() const;
 };
 
 inline int Board::operator()(int x, int y) const
@@ -50,6 +59,8 @@ inline void Board::set(int y, int color)
     top[y] --;
     assert(!data[top[y] * N + y] && (color == 1 || color == 2));
     data[top[y] * N + y] = color;
+    if (!won() && winning(top[y], y, color))
+        winX = top[y], winY = y;
     top[y] -= forbid(top[y] - 1, y);
 }
 
@@ -58,7 +69,14 @@ inline void Board::reset(int y)
     top[y] += forbid(top[y], y);
     assert(data[top[y] * N + y]);
     data[top[y] * N + y] = 0;
+    if (top[y] == winX && y == winY)
+        winX = winY = -1;
     top[y] ++;
+}
+
+inline int Board::won() const
+{
+    return ~winX ? data[winX * N + winY] : 0;
 }
 
 #endif // BOARD_H_

@@ -87,14 +87,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Evaluate.cpp" />
     <ClCompile Include="Judge.cpp" />
     <ClCompile Include="Search.cpp" />
     <ClCompile Include="Strategy.cpp" />
+    <ClCompile Include="Board.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Const.h" />
-    <ClInclude Include="Evaluate.h" />
     <ClInclude Include="Judge.h" />
     <ClInclude Include="Point.h" />
     <ClInclude Include="Strategy.h" />

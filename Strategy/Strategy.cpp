@@ -42,36 +42,34 @@ extern "C" __declspec(dllexport) Point* getPoint(
 #endif
     assert(N <= MAX_N);
     static Board *board = 0;
-    static Search *search = 0;
     if (board)
         for (int i = 0; i < N; i++)
             if (top[i] > board->getTop(i)) // Game restarted
             {
                 delete board;
-                delete search;
-                board = 0, search = 0;
+                board = 0;
                 break;
             }
     if (!board)
     {
-        assert(!search);
         board = new Board(M, N, noX, noY, _board, top);
-        search = new Search(M, N, *board);
+        Node::init(M, N, board);
         srand(0);
     } else {
         assert(board->getTop(lastY) == lastX + 1);
-        search->moveRoot(lastY, THEY);
+        Node::moveRoot(lastY);
     }
 
     int cnt = 0;
+    //for (int i = 0; i < 10; i++)
     while (clock() - stClock < 0.5 * CLOCKS_PER_SEC)
-        search->extend(), cnt++;
+        Node::extend(), cnt++;
 #ifndef NDEBUG
     _cprintf("Extended %d times\n", cnt);
 #endif
 
-    int y(search->best()), x(board->getTop(y) - 1);
-    search->moveRoot(y, WE);
+    int y(Node::best()), x(board->getTop(y) - 1);
+    Node::moveRoot(y);
 	return new Point(x, y);
 }
 

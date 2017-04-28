@@ -1,135 +1,167 @@
+#include <cmath>
 #include <cassert>
 #include <cstdlib>
 #include <algorithm>
 #include "Board.h"
 #include "Search.h"
-#include "Evaluate.h"
 
-void Search::addChildren(Node *node, int color)
+int Node::M = 0, Node::N = 0;
+Board *Node::board = 0;
+Node *Node::root = 0;
+
+template <class T> inline static T sqr(T x) { return x * x; }
+
+void Node::maxDist(double mu1, double sigma1, double mu2, double sigma2, double &mu, double &sigma)
 {
-    assert(node->valFrom == -1);
-    for (int i = 0; i < N; i++)
-        if (board.getTop(i))
-        {
-            int x(board.getTop(i) - 1);
-            board.set(i, color);
-            node->children[i] = new Node(Evaluate::evaluate(M, N, x, i, color, board));
-            board.reset(i);
-        }
-    backtrack(node, color);
+    // A: (X + Y) / 2, B: (X - Y) /2
+    double muA = (mu1 + mu2) * 0.5;
+    double muB = (mu1 - mu2) * 0.5;
+    double sigma2AB = (sqr(sigma1) + sqr(sigma2)) * 0.25;
+    double sigmaAB = sqrt(sigma2AB);
+
+    // C: |B|
+    double muC, sigma2C;
+    if (sigmaAB > 1e-5)
+    {
+        double reduced = fabs(muB / sigmaAB);
+        muC = (reduced < 1.25204 ? 0.79788 + 0.28972 * sqr(muB) / sigma2AB : reduced) * sigmaAB;
+        sigma2C = sqr(muB) + sigma2AB - sqr(muC);
+        if (sigma2C < 0)
+            sigma2C = 0, muC = sqrt(sqr(muB) + sigma2AB);
+    } else
+        muC = muB, sigma2C = sigma2AB;
+
+    // return = A + C or A - C
+    mu = muA + muC * k;
+    sigma = sqrt(sigma2AB + sigma2C);
+    assert(!isnan(mu));
+    assert(!isnan(sigma));
 }
 
-void Search::extendImpl(Node *node, int color)
+void Node::backtrack()
 {
-    if (node->minConf == MAX_VALUE || node->maxConf == MIN_VALUE)
-        return;
-    if (node->valFrom == -1)
-    {
-        addChildren(node, color);
-        return;
-    }
-
-    double* prob = new double[N]; // Probability of changing node->value
-    memset(prob, 0, N * sizeof(double));
+    assert(~childCnt);
+    bool started(false);
     for (int i = 0; i < N; i++)
-        if (node->children[i])
-        {
-            int len = node->children[i]->maxConf - node->children[i]->minConf;
-            if (!len) continue;
-            if (i == node->valFrom)
-                prob[i] = 1;
-            else if (color == WE)
-                prob[i] = double(std::max(0, node->children[i]->maxConf - node->value)) / len;
-            else
-                prob[i] = double(std::max(0, node->value - node->children[i]->minConf)) / len;
-        }
-    for (int i = 1; i < N; i++)
-        prob[i] += prob[i - 1];
-    assert(prob[N - 1] >= 0);
-    if (!prob[N - 1]) return;
-    double pos(double(rand()) / RAND_MAX * prob[N - 1]);
-    int toGo(0);
-    while (prob[toGo] <= pos && toGo < N - 1) toGo++;
-    delete[] prob;
-    board.set(toGo, color);
-    extendImpl(node->children[toGo], 3 - color);
-    board.reset(toGo);
-
-    backtrack(node, color);
+        if (c[i])
+            if (!started)
+                mu = c[i]->mu, sigma = c[i]->sigma, started = true;
+            else {
+                double _mu(mu), _sigma(sigma);
+                maxDist(_mu, _sigma, c[i]->mu, c[i]->sigma, mu, sigma);
+            }
+    if (!started) // Tie
+        mu = 0.5, sigma = 0;
 }
 
-void Search::backtrack(Search::Node *node, int color)
+double Node::simulateImpl(int color, int depth)
 {
-    node->value = color == WE ? MIN_VALUE : MAX_VALUE;
-    node->valFrom = 0, node->timeToDie = -1;
-    bool tie(true);
-    int maxMax = MIN_VALUE, minMax = MAX_VALUE, maxMin = MIN_VALUE, minMin = MAX_VALUE;
+    if (board->won())
+        return board->won() == WE ? 1 : 0;
     for (int i = 0; i < N; i++)
-        if (node->children[i])
+        if (board->getTop(i) && board->winning(board->getTop(i) - 1, i, color))
+            return (color == WE ? 1 : -1) * 0.5 * exp(-0.022353 * depth) + 0.5;
+    for (int i = 0; i < N; i++)
+        if (board->getTop(i) && board->winning(board->getTop(i) - 1, i, 3 - color))
         {
-            const Node *ch = node->children[i];
-            tie = false;
-            int k(color == WE ? 1 : -1);
-            if (ch->value * k > node->value * k)
-            {
-                node->value = ch->value, node->valFrom = i;
-                node->timeToDie = !~ch->timeToDie ? -1 : ch->timeToDie + 1;
-            }
-            if (node->value == ch->value)
-            {
-                if (color == WE && node->value == MIN_VALUE || color == THEY && node->value == MAX_VALUE)
-                {
-                    assert(ch->timeToDie >= 0);
-                    if (ch->timeToDie + 1 > node->timeToDie)
-                        node->timeToDie = ch->timeToDie + 1, node->valFrom = i;
-                }
-                if (color == WE && node->value == MAX_VALUE || color == THEY && node->value == MIN_VALUE)
-                {
-                    assert(ch->timeToDie >= 0);
-                    if (ch->timeToDie + 1 < node->timeToDie)
-                        node->timeToDie = ch->timeToDie + 1, node->valFrom = i;
-                }
-            }
-            maxMax = std::max(maxMax, ch->maxConf);
-            minMax = std::min(minMax, ch->maxConf);
-            maxMin = std::max(maxMin, ch->minConf);
-            minMin = std::min(minMin, ch->minConf);
+            board->set(i, color);
+            double ret = simulateImpl(3 - color, depth + 1);
+            board->reset(i);
+            return ret;
         }
-    if (tie)
+
+    int cnt(0);
+    for (int i = 0; i < N; i++)
+        if (board->getTop(i))
+            cnt++;
+    if (!cnt)
+        return 0.5;
+    cnt = rand() % cnt;
+    for (int i = 0; i < N; i++)
+        if (board->getTop(i) && !(cnt--))
+        {
+            board->set(i, color);
+            double ret = simulateImpl(3 - color, depth + 1);
+            board->reset(i);
+            return ret;
+        }
+    assert(false);
+}
+
+void Node::simulate()
+{
+    const int ROUND = 5;
+    double *sample = new double[ROUND];
+    mu = sigma = 0;
+    for (int i = 0; i < ROUND; i++)
     {
-        node->value = node->maxConf = node->minConf = 0;
-        return;
+        sample[i] = simulateImpl(k == 1 ? WE : THEY, 0);
+        assert(sample[i] == 0 || sample[i] == 1 || sample[i] == 0.5);
+        sample[i] = sample[i] * 0.98 + 0.01; // To avoid infinity
+        sample[i] = log(sample[i] / (1 - sample[i])); // [0, 1] -> R
+        mu += sample[i];
     }
-    if (color == WE)
+    mu /= ROUND;
+    for (int i = 0; i < ROUND; i++)
+        sigma += sqr(sample[i] - mu);
+    sigma = sqrt(sigma) / ROUND;
+    delete[] sample;
+}
+
+void Node::extendImpl(Node *node)
+{
+    if (!~node->childCnt)
     {
-        node->maxConf = (std::max(node->value, minMax) + maxMax) / 2; // Use average to approach median
-        node->minConf = maxMin;
+        node->childCnt = 0;
+        for (int i = 0; i < N; i++)
+            if (board->getTop(i))
+            {
+                node->childCnt++;
+                int x(board->getTop(i) - 1);
+                board->set(i, node->k == 1 ? WE : THEY);
+                node->c[i] = new Node(-node->k, 0, 4);
+                node->c[i]->simulate();
+                board->reset(i);
+            }
     } else {
-        node->minConf = (std::min(node->value, maxMin) + minMin) / 2;
-        node->maxConf = minMax;
+        int toGo(-1);
+        double bound(-INF * node->k);
+        for (int i = 0; i < N; i++)
+            if (node->c[i] && (node->c[i]->mu + node->c[i]->sigma) * node->k > bound * node->k)
+                bound = node->c[i]->mu + node->c[i]->sigma, toGo = i;
+        if (!~toGo)
+            return;
+        board->set(toGo, node->k == 1 ? WE : THEY);
+        extendImpl(node->c[toGo]);
+        board->reset(toGo);
     }
-    assert(node->maxConf >= node->value);
-    assert(node->value >= node->minConf);
-    assert((node->value < MAX_VALUE && node->value > MIN_VALUE) ^ (node->timeToDie >= 0));
+    node->backtrack();
 }
 
-void Search::extend()
+int Node::best()
 {
-    extendImpl(root, WE);
+    assert(root->childCnt);
+    int ret(-1);
+    double val(-INF * root->k);
+    for (int i = 0; i < N; i++)
+        if (root->c[i])
+        {
+            if (board->winning(board->getTop(i) - 1, i, WE))
+                return i;
+            if (root->c[i]->mu * root->k > val * root->k)
+                val = root->c[i]->mu, ret = i;
+        }
+    assert(~ret);
+    return ret;
 }
 
-int Search::best() const
-{
-    return root->valFrom;
-}
-
-void Search::moveRoot(int action, int color)
+void Node::moveRoot(int action)
 {
     Node *old = root;
-    if (root->children[action])
-        root = old->children[action], old->children[action] = 0;
+    board->set(action, root->k == 1 ? WE : THEY);
+    if (root->c[action])
+        root = old->c[action], old->c[action] = 0;
     else
-        root = new Node(0);
+        root = new Node(-old->k, 0, 4);
     delete old;
-    board.set(action, color); // Should be after addChildren
 }
