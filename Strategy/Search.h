@@ -15,7 +15,6 @@ private:
     static Board *board;
     static Node *root;
 
-    bool hasChild;
     int k; /// WE => 1, THEY => -1
     int totCnt, weWin, theyWin;
     Node *c[MAX_N]; /// Children;
@@ -37,24 +36,15 @@ public:
     static void moveRoot(int action);
 
 private:
-    /// Calculate mu, sigma of 2 normal distribution maximum
-    void maxDist(double mu1, double sigma1, double mu2, double sigma2, double &mu, double &sigma);
-
-    /// Get update from children
-    void backtrack();
-
     /// Simulate recursively
     static int simulateImpl(int color, int depth);
 
-    /// Simulate multiple times
-    void simulate();
-
     /// Extend recursively
-    static void extendImpl(Node *node);
+    static int extendImpl(Node *node);
 };
 
 inline Node::Node(int _k)
-    : hasChild(false), k(_k), totCnt(0), weWin(0), theyWin(0)
+    : k(_k), totCnt(0), weWin(0), theyWin(0)
 {
     assert(k == 1 || k == -1);
     memset(c, 0, sizeof c);

@@ -5,6 +5,9 @@
 #include "Search.h"
 #include "Strategy.h"
 #ifndef NDEBUG
+    #define PRINT
+#endif
+#ifdef PRINT
     #include <conio.h>
     #include <atlstr.h>
 #endif
@@ -35,7 +38,7 @@ extern "C" __declspec(dllexport) Point* getPoint(
 {
     clock_t stClock = clock();
 
-#ifndef NDEBUG
+#ifdef PRINT
     static bool window = false;
     if (!window)
         window = true, AllocConsole();
@@ -61,10 +64,10 @@ extern "C" __declspec(dllexport) Point* getPoint(
     }
 
     int cnt = 0;
-    //for (int i = 0; i < 100000; i++)
+    //for (int i = 0; i < 10000; i++)
     while (clock() - stClock < 2.0 * CLOCKS_PER_SEC)
         Node::extend(), cnt++;
-#ifndef NDEBUG
+#ifdef PRINT
     _cprintf("Extended %d times\n", cnt);
 #endif
 
