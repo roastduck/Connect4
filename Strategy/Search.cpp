@@ -42,37 +42,29 @@ void Node::backtrack()
 {
     assert(~childCnt);
     assert(!board->won());
-    bool started(false);
-    childCnt = 0;
+    childCnt = winCnt = 0;
     for (int i = 0; i < N; i++)
         if (c[i])
         {
-            if (!started)
-                mu = c[i]->mu, sigma = c[i]->sigma, started = true;
-            else {
-                double _mu(mu), _sigma(sigma);
-                maxDist(_mu, _sigma, c[i]->mu, c[i]->sigma, mu, sigma);
-            }
-            childCnt += c[i]->childCnt;
+            winCnt += c[i]->winCnt;
+            childCnt += !~c[i]->childCnt ? 1 : c[i]->childCnt; // !!!
         }
-    if (!started) // Tie
-        mu = 0, sigma = 0;
 }
 
-double Node::simulateImpl(int color, int depth)
+bool Node::simulateImpl(int color, int depth)
 {
     if (board->won())
         return board->won() == WE ? 1 : 0;
     if (depth > 10)
-        return 0.5;
+        return 0;
     for (int i = 0; i < N; i++)
         if (board->getTop(i) && board->winning(board->getTop(i) - 1, i, color))
-            return (color == WE ? 1 : -1) * 0.5 * exp(-0.107296 * depth) + 0.5;
+            return color == WE ? 1 : 0;
     for (int i = 0; i < N; i++)
         if (board->getTop(i) && board->winning(board->getTop(i) - 1, i, 3 - color))
         {
             board->set(i, color);
-            double ret = simulateImpl(3 - color, depth + 1);
+            bool ret = simulateImpl(3 - color, depth + 1);
             board->reset(i);
             return ret;
         }
@@ -82,13 +74,13 @@ double Node::simulateImpl(int color, int depth)
         if (board->getTop(i))
             cnt++;
     if (!cnt)
-        return 0.5;
+        return 0;
     cnt = rand() % cnt;
     for (int i = 0; i < N; i++)
         if (board->getTop(i) && !(cnt--))
         {
             board->set(i, color);
-            double ret = simulateImpl(3 - color, depth + 1);
+            bool ret = simulateImpl(3 - color, depth + 1);
             board->reset(i);
             return ret;
         }
@@ -97,21 +89,7 @@ double Node::simulateImpl(int color, int depth)
 
 void Node::simulate()
 {
-    const int ROUND = 5;
-    double *sample = new double[ROUND];
-    mu = sigma = 0;
-    for (int i = 0; i < ROUND; i++)
-    {
-        sample[i] = simulateImpl(k == 1 ? WE : THEY, 0);
-        sample[i] = sample[i] * 0.98 + 0.01; // To avoid infinity
-        sample[i] = log(sample[i] / (1 - sample[i])); // [0, 1] -> R
-        mu += sample[i];
-    }
-    mu /= ROUND;
-    for (int i = 0; i < ROUND; i++)
-        sigma += sqr(sample[i] - mu);
-    sigma = sqrt(sigma) / ROUND;
-    delete[] sample;
+    winCnt = simulateImpl(k == 1 ? WE : THEY, 0);
 }
 
 void Node::extendImpl(Node *node)
@@ -125,7 +103,7 @@ void Node::extendImpl(Node *node)
             if (board->getTop(i))
             {
                 board->set(i, node->k == 1 ? WE : THEY);
-                node->c[i] = new Node(-node->k, 0, 4);
+                node->c[i] = new Node(-node->k);
                 node->c[i]->simulate();
                 board->reset(i);
             }
@@ -135,11 +113,8 @@ void Node::extendImpl(Node *node)
         for (int i = 0; i < N; i++)
             if (node->c[i])
             {
-                /*int tn = !~node->c[i]->childCnt ? 1 : node->c[i]->childCnt;
-                double tmp = (1.0 / (1 + exp(-node->c[i]->mu)) - 0.01) / 0.98;
-                assert(tmp >= -1e-5 && tmp <= 1 + 1e-5);
-                double _bound = tmp + sqrt(2 * log(node->childCnt) / tn);*/
-                double _bound = node->c[i]->mu + node->c[i]->sigma;
+                int tn = !~node->c[i]->childCnt ? 1 : node->c[i]->childCnt;
+                double _bound = node->c[i]->winCnt / tn + node->k * (2 * log(node->childCnt) / tn); // !!!
                 if (_bound * node->k > bound * node->k)
                     bound = _bound, toGo = i;
             }
@@ -162,8 +137,8 @@ int Node::best()
         {
             if (board->winning(board->getTop(i) - 1, i, WE))
                 return i;
-            if (root->c[i]->mu * root->k > val * root->k)
-                val = root->c[i]->mu, ret = i;
+            if (double(root->c[i]->winCnt) / root->c[i]->childCnt * root->k > val * root->k)
+                val = double(root->c[i]->winCnt) / root->c[i]->childCnt, ret = i;
         }
     assert(~ret);
     return ret;
@@ -176,6 +151,6 @@ void Node::moveRoot(int action)
     if (root->c[action])
         root = old->c[action], old->c[action] = 0;
     else
-        root = new Node(-old->k, 0, 4);
+        root = new Node(-old->k);
     delete old;
 }

@@ -16,12 +16,11 @@ private:
     static Node *root;
 
     int k; /// WE => 1, THEY => -1
-    int childCnt;;
-    double mu, sigma;
+    int childCnt, winCnt;
     Node *c[MAX_N]; /// Children;
 
 public:
-    Node(int color, double _mu, double _sigma);
+    Node(int _k);
     ~Node();
 
     /// Initialize static variables
@@ -44,7 +43,7 @@ private:
     void backtrack();
 
     /// Simulate recursively
-    static double simulateImpl(int color, int depth);
+    static bool simulateImpl(int color, int depth);
 
     /// Simulate multiple times
     void simulate();
@@ -53,8 +52,8 @@ private:
     static void extendImpl(Node *node);
 };
 
-inline Node::Node(int _k, double _mu, double _sigma)
-    : k(_k), childCnt(-1), mu(_mu), sigma(_sigma)
+inline Node::Node(int _k)
+    : k(_k), childCnt(-1), winCnt(0)
 {
     assert(k == 1 || k == -1);
     memset(c, 0, sizeof c);
@@ -73,7 +72,7 @@ inline void Node::init(int _M, int _N, Board *_board)
     M = _M, N = _N, board = _board;
     if (root)
         delete root;
-    root = new Node(1, 0, 4);
+    root = new Node(1);
 }
 
 inline void Node::extend()
