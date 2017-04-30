@@ -62,7 +62,7 @@ extern "C" __declspec(dllexport) Point* getPoint(
 
     int cnt = 0;
     //for (int i = 0; i < 10; i++)
-    while (clock() - stClock < 0.5 * CLOCKS_PER_SEC)
+    while (clock() - stClock < 2.0 * CLOCKS_PER_SEC)
         Node::extend(), cnt++;
 #ifndef NDEBUG
     _cprintf("Extended %d times\n", cnt);

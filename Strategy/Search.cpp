@@ -41,26 +41,33 @@ void Node::maxDist(double mu1, double sigma1, double mu2, double sigma2, double 
 void Node::backtrack()
 {
     assert(~childCnt);
+    assert(!board->won());
     bool started(false);
+    childCnt = 0;
     for (int i = 0; i < N; i++)
         if (c[i])
+        {
             if (!started)
                 mu = c[i]->mu, sigma = c[i]->sigma, started = true;
             else {
                 double _mu(mu), _sigma(sigma);
                 maxDist(_mu, _sigma, c[i]->mu, c[i]->sigma, mu, sigma);
             }
+            childCnt += c[i]->childCnt;
+        }
     if (!started) // Tie
-        mu = 0.5, sigma = 0;
+        mu = 0, sigma = 0;
 }
 
 double Node::simulateImpl(int color, int depth)
 {
     if (board->won())
         return board->won() == WE ? 1 : 0;
+    if (depth > 10)
+        return 0.5;
     for (int i = 0; i < N; i++)
         if (board->getTop(i) && board->winning(board->getTop(i) - 1, i, color))
-            return (color == WE ? 1 : -1) * 0.5 * exp(-0.022353 * depth) + 0.5;
+            return (color == WE ? 1 : -1) * 0.5 * exp(-0.107296 * depth) + 0.5;
     for (int i = 0; i < N; i++)
         if (board->getTop(i) && board->winning(board->getTop(i) - 1, i, 3 - color))
         {
@@ -96,7 +103,6 @@ void Node::simulate()
     for (int i = 0; i < ROUND; i++)
     {
         sample[i] = simulateImpl(k == 1 ? WE : THEY, 0);
-        assert(sample[i] == 0 || sample[i] == 1 || sample[i] == 0.5);
         sample[i] = sample[i] * 0.98 + 0.01; // To avoid infinity
         sample[i] = log(sample[i] / (1 - sample[i])); // [0, 1] -> R
         mu += sample[i];
@@ -110,14 +116,14 @@ void Node::simulate()
 
 void Node::extendImpl(Node *node)
 {
+    if (board->won())
+        return; // This prevent error in backtrack
     if (!~node->childCnt)
     {
-        node->childCnt = 0;
+        node->childCnt = 0; // Will be updated in `backtrack`
         for (int i = 0; i < N; i++)
             if (board->getTop(i))
             {
-                node->childCnt++;
-                int x(board->getTop(i) - 1);
                 board->set(i, node->k == 1 ? WE : THEY);
                 node->c[i] = new Node(-node->k, 0, 4);
                 node->c[i]->simulate();
@@ -127,8 +133,16 @@ void Node::extendImpl(Node *node)
         int toGo(-1);
         double bound(-INF * node->k);
         for (int i = 0; i < N; i++)
-            if (node->c[i] && (node->c[i]->mu + node->c[i]->sigma) * node->k > bound * node->k)
-                bound = node->c[i]->mu + node->c[i]->sigma, toGo = i;
+            if (node->c[i])
+            {
+                /*int tn = !~node->c[i]->childCnt ? 1 : node->c[i]->childCnt;
+                double tmp = (1.0 / (1 + exp(-node->c[i]->mu)) - 0.01) / 0.98;
+                assert(tmp >= -1e-5 && tmp <= 1 + 1e-5);
+                double _bound = tmp + sqrt(2 * log(node->childCnt) / tn);*/
+                double _bound = node->c[i]->mu + node->c[i]->sigma;
+                if (_bound * node->k > bound * node->k)
+                    bound = _bound, toGo = i;
+            }
         if (!~toGo)
             return;
         board->set(toGo, node->k == 1 ? WE : THEY);
