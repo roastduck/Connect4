@@ -15,8 +15,9 @@ private:
     static Board *board;
     static Node *root;
 
+    bool hasChild;
     int k; /// WE => 1, THEY => -1
-    int childCnt, weWin, theyWin;
+    int totCnt, weWin, theyWin;
     Node *c[MAX_N]; /// Children;
 
 public:
@@ -53,7 +54,7 @@ private:
 };
 
 inline Node::Node(int _k)
-    : k(_k), childCnt(-1), weWin(0), theyWin(0)
+    : hasChild(false), k(_k), totCnt(0), weWin(0), theyWin(0)
 {
     assert(k == 1 || k == -1);
     memset(c, 0, sizeof c);

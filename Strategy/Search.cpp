@@ -40,15 +40,15 @@ void Node::maxDist(double mu1, double sigma1, double mu2, double sigma2, double 
 
 void Node::backtrack()
 {
-    assert(~childCnt);
+    assert(hasChild);
     assert(!board->won());
-    childCnt = weWin = theyWin = 0;
+    totCnt = weWin = theyWin = 0;
     for (int i = 0; i < N; i++)
         if (c[i])
         {
             weWin += c[i]->weWin;
             theyWin += c[i]->theyWin;
-            childCnt += !~c[i]->childCnt ? 1 : c[i]->childCnt;
+            totCnt += c[i]->totCnt;
         }
 }
 
@@ -92,6 +92,7 @@ void Node::simulate()
 {
     int res = simulateImpl(k == 1 ? WE : THEY, 0);
     weWin = theyWin = 0;
+    totCnt = 1;
     if (res == WE)
         weWin = 1;
     if (res = THEY)
@@ -101,10 +102,14 @@ void Node::simulate()
 void Node::extendImpl(Node *node)
 {
     if (board->won())
-        return; // This prevent error in backtrack
-    if (!~node->childCnt)
     {
-        node->childCnt = 0; // Will be updated in `backtrack`
+        node->totCnt++;
+        (board->won() == WE ? node->weWin : node->theyWin)++;
+        return;
+    } // !!!
+    if (!node->hasChild)
+    {
+        node->hasChild = true;
         for (int i = 0; i < N; i++)
             if (board->getTop(i))
             {
@@ -115,12 +120,12 @@ void Node::extendImpl(Node *node)
             }
     } else {
         int toGo(-1);
-        double bound(-INF * node->k);
+        double bound(-INF);
         for (int i = 0; i < N; i++)
             if (node->c[i])
             {
-                int tn = !~node->c[i]->childCnt ? 1 : node->c[i]->childCnt;
-                double _bound = (node->k == 1 ? node->c[i]->weWin : node->c[i]->theyWin) / tn + sqrt(2 * log(node->childCnt) / tn);
+                int tn = node->c[i]->totCnt;
+                double _bound = (node->k == 1 ? node->c[i]->weWin : node->c[i]->theyWin) / tn + sqrt(2 * log(node->totCnt) / tn);
                 if (_bound> bound)
                     bound = _bound, toGo = i;
             }
@@ -135,7 +140,7 @@ void Node::extendImpl(Node *node)
 
 int Node::best()
 {
-    assert(root->childCnt);
+    assert(root->hasChild);
     assert(root->k == 1);
     int ret(-1);
     double val(-INF * root->k);
@@ -144,8 +149,8 @@ int Node::best()
         {
             if (board->winning(board->getTop(i) - 1, i, WE))
                 return i;
-            if (double(root->c[i]->weWin) / root->c[i]->childCnt > val)
-                val = double(root->c[i]->weWin) / root->c[i]->childCnt, ret = i;
+            if (double(root->c[i]->weWin) / root->c[i]->totCnt > val)
+                val = double(root->c[i]->weWin) / root->c[i]->totCnt, ret = i;
         }
     assert(~ret);
     return ret;
