@@ -121,7 +121,7 @@ void Node::extendImpl(Node *node)
             {
                 int tn = !~node->c[i]->childCnt ? 1 : node->c[i]->childCnt;
                 double _bound = (node->k == 1 ? node->c[i]->weWin : node->c[i]->theyWin) / tn + sqrt(2 * log(node->childCnt) / tn);
-                if (_bound * node->k > bound * node->k)
+                if (_bound> bound)
                     bound = _bound, toGo = i;
             }
         if (!~toGo)
