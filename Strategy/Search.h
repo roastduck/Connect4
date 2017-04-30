@@ -16,7 +16,7 @@ private:
     static Node *root;
 
     int k; /// WE => 1, THEY => -1
-    int childCnt, winCnt;
+    int childCnt, weWin, theyWin;
     Node *c[MAX_N]; /// Children;
 
 public:
@@ -43,7 +43,7 @@ private:
     void backtrack();
 
     /// Simulate recursively
-    static bool simulateImpl(int color, int depth);
+    static int simulateImpl(int color, int depth);
 
     /// Simulate multiple times
     void simulate();
@@ -53,7 +53,7 @@ private:
 };
 
 inline Node::Node(int _k)
-    : k(_k), childCnt(-1), winCnt(0)
+    : k(_k), childCnt(-1), weWin(0), theyWin(0)
 {
     assert(k == 1 || k == -1);
     memset(c, 0, sizeof c);

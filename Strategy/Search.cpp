@@ -42,29 +42,30 @@ void Node::backtrack()
 {
     assert(~childCnt);
     assert(!board->won());
-    childCnt = winCnt = 0;
+    childCnt = weWin = theyWin = 0;
     for (int i = 0; i < N; i++)
         if (c[i])
         {
-            winCnt += c[i]->winCnt;
-            childCnt += !~c[i]->childCnt ? 1 : c[i]->childCnt; // !!!
+            weWin += c[i]->weWin;
+            theyWin += c[i]->theyWin;
+            childCnt += !~c[i]->childCnt ? 1 : c[i]->childCnt;
         }
 }
 
-bool Node::simulateImpl(int color, int depth)
+int Node::simulateImpl(int color, int depth)
 {
     if (board->won())
-        return board->won() == WE ? 1 : 0;
+        return board->won();
     if (depth > 10)
         return 0;
     for (int i = 0; i < N; i++)
         if (board->getTop(i) && board->winning(board->getTop(i) - 1, i, color))
-            return color == WE ? 1 : 0;
+            return color;
     for (int i = 0; i < N; i++)
         if (board->getTop(i) && board->winning(board->getTop(i) - 1, i, 3 - color))
         {
             board->set(i, color);
-            bool ret = simulateImpl(3 - color, depth + 1);
+            int ret = simulateImpl(3 - color, depth + 1);
             board->reset(i);
             return ret;
         }
@@ -80,7 +81,7 @@ bool Node::simulateImpl(int color, int depth)
         if (board->getTop(i) && !(cnt--))
         {
             board->set(i, color);
-            bool ret = simulateImpl(3 - color, depth + 1);
+            int ret = simulateImpl(3 - color, depth + 1);
             board->reset(i);
             return ret;
         }
@@ -89,7 +90,12 @@ bool Node::simulateImpl(int color, int depth)
 
 void Node::simulate()
 {
-    winCnt = simulateImpl(k == 1 ? WE : THEY, 0);
+    int res = simulateImpl(k == 1 ? WE : THEY, 0);
+    weWin = theyWin = 0;
+    if (res == WE)
+        weWin = 1;
+    if (res = THEY)
+        theyWin = 1;
 }
 
 void Node::extendImpl(Node *node)
@@ -114,7 +120,7 @@ void Node::extendImpl(Node *node)
             if (node->c[i])
             {
                 int tn = !~node->c[i]->childCnt ? 1 : node->c[i]->childCnt;
-                double _bound = node->c[i]->winCnt / tn + node->k * (2 * log(node->childCnt) / tn); // !!!
+                double _bound = (node->k == 1 ? node->c[i]->weWin : node->c[i]->theyWin) / tn + sqrt(2 * log(node->childCnt) / tn);
                 if (_bound * node->k > bound * node->k)
                     bound = _bound, toGo = i;
             }
@@ -130,6 +136,7 @@ void Node::extendImpl(Node *node)
 int Node::best()
 {
     assert(root->childCnt);
+    assert(root->k == 1);
     int ret(-1);
     double val(-INF * root->k);
     for (int i = 0; i < N; i++)
@@ -137,8 +144,8 @@ int Node::best()
         {
             if (board->winning(board->getTop(i) - 1, i, WE))
                 return i;
-            if (double(root->c[i]->winCnt) / root->c[i]->childCnt * root->k > val * root->k)
-                val = double(root->c[i]->winCnt) / root->c[i]->childCnt, ret = i;
+            if (double(root->c[i]->weWin) / root->c[i]->childCnt > val)
+                val = double(root->c[i]->weWin) / root->c[i]->childCnt, ret = i;
         }
     assert(~ret);
     return ret;
